@@ -4886,10 +4886,16 @@
       "links": {},
       "address": "0xeF4947e29a49b6a45c0492a8e3C738259F2D190A",
       "transactionHash": "0x962fb5f895dd3a64039b0c58c7b5ef3f23f5c4dfbbc3520b4fbedcefb97f8a9c"
+    },
+    "1579714699325": {
+      "events": {},
+      "links": {},
+      "address": "0x799a3d8d04c737171045aD17e4d2518f4FE2Bee5",
+      "transactionHash": "0x443dd129752798beba21e602de6ffd4dc8e8f003bfd051480bdfc79b42ab1f40"
     }
   },
   "schemaVersion": "3.0.21",
-  "updatedAt": "2020-01-22T16:08:19.844Z",
+  "updatedAt": "2020-01-22T17:38:26.062Z",
   "networkType": "ethereum",
   "devdoc": {
     "details": "Wrappers over Solidity's arithmetic operations with added overflow checks. * Arithmetic operations in Solidity wrap on overflow. This can easily result in bugs, because programmers usually assume that an overflow raises an error, which is the standard behavior in high level programming languages. `SafeMath` restores this intuition by reverting the transaction when an operation overflows. * Using this library instead of the unchecked operations eliminates an entire class of bugs, so it's recommended to use it always.",

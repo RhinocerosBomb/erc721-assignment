@@ -1,8 +1,11 @@
 const SafeMath = artifacts.require("SafeMath");
-const SimpleBank = artifacts.require("SimpleBank");
+const BankWithChequing = artifacts.require("BankWithChequing.sol");
+const Address = artifacts.require("Address.sol");
 
 module.exports = function(deployer) {
   deployer.deploy(SafeMath);
-  deployer.link(SafeMath, SimpleBank);
-  deployer.deploy(SimpleBank);
+  deployer.deploy(Address);
+  deployer.link(SafeMath, BankWithChequing);
+  deployer.link(Address, BankWithChequing);
+  deployer.deploy(BankWithChequing);
 };
