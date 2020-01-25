@@ -10,6 +10,7 @@ contract Chequing is ERC165, IERC721 {
     using Address for address;
 
     event Mint(address indexed owner, uint256 indexed chequeId);
+    event burn(address indexed owner, uint256 indexed chequeId);
 
     struct Cheque {
         address accountOwner;
@@ -21,10 +22,11 @@ contract Chequing is ERC165, IERC721 {
         uint256 expiraryDate;
     }
 
-    uint256 private _chequeNonce;
+    uint256 private _generalChequeIdNonce = 1;
 
     mapping (address => uint256) public _chequesOwned;
     mapping (uint256 => address) private _chequesToAddress;
+    mapping (uint256 => uint256) private _chequeIdToIndex;
     mapping (uint256 => address) private _chequeApprovals;
     mapping (address => mapping (address => bool)) private _operatorApprovals;
 
@@ -121,26 +123,62 @@ contract Chequing is ERC165, IERC721 {
         emit Transfer(from, to, chequeId);
     }
 
+    function _getChequeInformation(uint256 chequeId) public view returns(address, address, uint256, uint256, uint256, uint256, uint256) {
+        uint256 chequeIndex = _getChequeIndex(chequeId);
+        Cheque memory cheque = _cheques[chequeIndex];
+        return (cheque.accountOwner, cheque.receiver, cheque.id, cheque.amount, cheque.issueDate, cheque.usableFromDate, cheque.expiraryDate);
+    }
+
+    function _getChequeIndex(uint256 chequeId) internal view returns (uint256) {
+        return _chequeIdToIndex[chequeId];
+    }
+
+    function _signReceiver(address receiver, uint256 chequeId) public {
+        require(receiver != address(0), "Cannot sign a cheque with address 0x0");
+
+        uint256 chequeIndex = _getChequeIndex(chequeId);
+        require(_cheques[chequeIndex].receiver == address(0), "A signed cheque cannot be re-signed");
+        _cheques[chequeIndex].receiver = receiver;
+    }
+
+    function _signAmount(uint256 amount, uint256 chequeId) public {
+        require(amount != 0, "Cannot sign a cheque with amount 0");
+
+        uint256 chequeIndex = _getChequeIndex(chequeId);
+        require(_cheques[chequeIndex].amount == 0, "A signed cheque cannot be re-signed");
+        _cheques[chequeIndex].amount = amount;
+    }
+
+    function _signAmountAndReceiver(uint256 amount, address receiver, uint256 chequeId) public {
+        require(amount != 0, "Cannot sign a cheque with amount 0");
+        require(receiver != address(0), "Cannot sign a cheque with address 0x0");
+        require(_isApprovedOrOwner(msg.sender, chequeId), 'Cannot sign a cheque that you do not own or approve of');
+        uint256 chequeIndex = _getChequeIndex(chequeId);
+        require(_cheques[chequeIndex].amount == 0, "A signed cheque cannot be re-signed");
+        require(_cheques[chequeIndex].receiver == address(0), "A signed cheque cannot be re-signed");
+        _cheques[chequeIndex].receiver = receiver;
+        _cheques[chequeIndex].amount = amount;
+    }
+
     function _safeMint(address receiver, uint256 amount, uint256 usableFromDate, uint256 expiraryDate, bytes memory _data) internal {
         uint256 chequeId = _mint(receiver, amount, usableFromDate, expiraryDate);
         require(_checkOnERC721Received(address(0), msg.sender, chequeId, _data), "ERC721: transfer to non ERC721Receiver implementer");
     }
 
     function _mint(address receiver, uint256 amount, uint256 usableFromDate, uint256 expiraryDate) internal returns (uint256) {
-        uint256 chequeId = _chequeNonce;
         uint256 issueDate = block.timestamp;
         require(msg.sender != address(0), "ERC721: mint to the zero address");
         require(issueDate > expiraryDate || expiraryDate == 0, "Cannot create an expired cheque. To create a cheque that doesn't expire, use 0 as [uint256 expiraryDate]");
-        _chequeNonce.add(1);
-        Cheque memory newCheque = Cheque(msg.sender, receiver, chequeId, amount, issueDate, usableFromDate, expiraryDate);
+        _generalChequeIdNonce = _generalChequeIdNonce.add(1);
+        Cheque memory newCheque = Cheque(msg.sender, receiver, _generalChequeIdNonce, amount, issueDate, usableFromDate, expiraryDate);
         _cheques.push(newCheque);
-        _chequesToAddress[chequeId] = msg.sender;
-        emit Mint(msg.sender, chequeId);
+        _chequesToAddress[_generalChequeIdNonce] = msg.sender;
+        emit Mint(msg.sender, _generalChequeIdNonce);
 
-        return chequeId;
+        return _generalChequeIdNonce;
     }
 
-    function _burn(uint256 chequeId) internal {
+    function _burn(uint256 chequeId) internal returns (bool) {
         require(_isApprovedOrOwner(msg.sender, chequeId), "ERC721: burn of token that is not own");
 
         _clearApproval(chequeId);
@@ -148,7 +186,8 @@ contract Chequing is ERC165, IERC721 {
         _chequesOwned[ownerOf(chequeId)].sub(1);
         _chequesToAddress[chequeId] = address(0);
 
-        emit Transfer(ownerOf(chequeId), address(0), chequeId);
+        emit burn(msg.sender, chequeId);
+        return true;
     }
 
     function _exists(uint256 chequeId) internal view returns (bool) {
